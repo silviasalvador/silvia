@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moderation Dashboard 2025</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f11;
+  --surface: #16181c;
+  --surface2: #1e2026;
+  --border: #2a2d35;
+  --border2: #363a44;
+  --text: #e8eaf0;
+  --muted: #7a7f8e;
+  --accent: #4f8ef7;
+  --accent2: #7c6af5;
+  --green: #3dd68c;
+  --amber: #f5a623;
+  --red: #f04a4a;
+  --pink: #e8529a;
+  --teal: #2ec4b6;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.5; min-height: 100vh; }
+
+/* LAYOUT */
+.shell { display: flex; flex-direction: column; min-height: 100vh; }
+header { padding: 20px 28px 0; border-bottom: 1px solid var(--border); }
+.header-top { display: flex; align-items: baseline; gap: 16px; margin-bottom: 16px; }
+.header-top h1 { font-size: 15px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text); }
+.header-top .sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.tabs { display: flex; gap: 2px; }
+.tab { padding: 9px 20px; font-size: 12px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; cursor: pointer; border-top-left-radius: 4px; border-top-right-radius: 4px; color: var(--muted); background: transparent; border: none; border-bottom: 2px solid transparent; transition: all .15s; font-family: var(--sans); }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.main { flex: 1; padding: 24px 28px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* COMING SOON */
+.coming { display: flex; align-items: center; justify-content: center; height: 300px; color: var(--muted); font-family: var(--mono); font-size: 13px; gap: 10px; }
+.coming::before { content: '//'; color: var(--border2); }
+
+/* SECTION */
+.section-title { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* GRID LAYOUTS */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+@media(max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} .grid2,.grid3{grid-template-columns:1fr;} }
+
+/* METRIC CARD */
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
+.metric .label { font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.metric .value { font-size: 26px; font-weight: 600; font-family: var(--mono); line-height: 1; }
+.metric .sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+/* PANEL */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px; }
+.panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.panel-title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* RANKING */
+.rank-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.rank-item:last-child { border-bottom: none; }
+.rank-n { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 18px; text-align: right; flex-shrink: 0; }
+.rank-name { flex: 1; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-bar-wrap { width: 100px; height: 4px; background: var(--border); border-radius: 2px; flex-shrink: 0; }
+.rank-bar { height: 4px; border-radius: 2px; background: var(--accent); }
+.rank-val { font-family: var(--mono); font-size: 11px; color: var(--text); width: 52px; text-align: right; flex-shrink: 0; }
+
+/* MOTIVOS DONUT */
+.motivo-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.motivo-row:last-child { border-bottom: none; }
+.motivo-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.motivo-name { flex: 1; font-size: 12px; }
+.motivo-pct { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 40px; text-align: right; }
+.motivo-val { font-family: var(--mono); font-size: 11px; color: var(--text); width: 58px; text-align: right; }
+
+/* MONTH HEATMAP */
+.heatmap { width: 100%; border-collapse: collapse; font-size: 11px; }
+.heatmap th { padding: 6px 8px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); text-align: right; font-size: 10px; white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
+.heatmap th:first-child { text-align: left; }
+.heatmap td { padding: 5px 8px; text-align: right; font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+.heatmap td:first-child { text-align: left; font-family: var(--sans); font-weight: 500; font-size: 12px; padding-left: 4px; }
+.heatmap tr:hover td { background: rgba(255,255,255,.03); }
+.heatmap tfoot td { font-weight: 600; border-top: 1px solid var(--border2); color: var(--text); padding-top: 8px; }
+.dash-cell { color: var(--border2); }
+.cell-0 { color: var(--border2); }
+
+/* COMMENTS TABLE */
+.comments-table { width: 100%; border-collapse: collapse; }
+.comments-table th { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border2); }
+.comments-table th:last-child,.comments-table td:last-child { text-align: right; }
+.comments-table td { padding: 5px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.comments-table tr:hover td { background: rgba(255,255,255,.02); }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 10px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+
+/* COMPARADOR */
+.select-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+select { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); border-radius: 4px; padding: 6px 10px; font-size: 12px; font-family: var(--sans); cursor: pointer; }
+select:focus { outline: none; border-color: var(--accent); }
+label { font-size: 11px; color: var(--muted); }
+.comp-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.comp-bar-row { display: flex; align-items: center; gap: 10px; }
+.comp-bar-name { width: 130px; font-size: 12px; font-weight: 500; text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.comp-bar-track { flex: 1; height: 18px; background: var(--surface2); border-radius: 3px; position: relative; overflow: hidden; }
+.comp-bar-fill { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 6px; font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,.8); transition: width .3s; white-space: nowrap; overflow: hidden; }
+.comp-bar-val { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 60px; text-align: right; flex-shrink: 0; }
+.no-data { color: var(--border2); font-family: var(--mono); font-size: 11px; }
+
+/* SCROLL */
+.scroll-wrap { overflow-x: auto; }
+.scroll-wrap::-webkit-scrollbar { height: 4px; } 
+.scroll-wrap::-webkit-scrollbar-track { background: var(--surface2); }
+.scroll-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* PIE SVG */
+.pie-legend { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+
+/* BADGE colors by tipo */
+.tag-out    { background: rgba(79,142,247,.15); color: #4f8ef7; }
+.tag-ethical{ background: rgba(232,82,154,.15); color: #e8529a; }
+.tag-copy   { background: rgba(124,106,245,.15); color: #9d8ef5; }
+.tag-trade  { background: rgba(245,166,35,.15); color: #f5a623; }
+.tag-invalid{ background: rgba(46,196,182,.15); color: #2ec4b6; }
+.tag-error  { background: rgba(240,74,74,.15); color: #f04a4a; }
+.tag-plag   { background: rgba(122,127,142,.15); color: #9aa0af; }
+.tag-support{ background: rgba(61,214,140,.15); color: #3dd68c; }
+
+/* util */
+.mb16 { margin-bottom: 16px; }
+.mb24 { margin-bottom: 24px; }
+.full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <div class="header-top">
+    <h1>Moderation Reports</h1>
+    <span class="sub">// internal dashboard</span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('2025')">2025</button>
+    <button class="tab" onclick="switchTab('2026')">2026</button>
+    <button class="tab" onclick="switchTab('resumen')">Resumen</button>
+  </div>
+</header>
+
+<div class="main">
+<!-- ===================== 2025 ===================== -->
+<div class="page active" id="page-2025">
+
+  <!-- KPIs -->
+  <div class="grid4 mb24" id="kpis"></div>
+
+  <!-- Motivos + Ranking curadores -->
+  <div class="section-title">Distribución por motivo</div>
+  <div class="grid2 mb24">
+    <div class="panel" id="panel-motivos"></div>
+    <div class="panel" id="panel-motivos-detail"></div>
+  </div>
+
+  <!-- Ranking por curador -->
+  <div class="section-title">Ranking curadores — año completo</div>
+  <div class="grid2 mb24">
+    <div class="panel" id="panel-ranking"></div>
+    <div class="panel" id="panel-ranking-avg"></div>
+  </div>
+
+  <!-- Heatmap por mes -->
+  <div class="section-title">Volumen mensual por curador</div>
+  <div class="panel mb24 scroll-wrap" id="panel-heatmap"></div>
+
+  <!-- Comparador por mes -->
+  <div class="section-title">Comparar curadores en un mes</div>
+  <div class="panel mb24" id="panel-comparador">
+    <div class="select-row">
+      <label>Mes:</label>
+      <select id="sel-mes" onchange="renderComparador()"></select>
+      <label style="margin-left:8px;">Ordenar:</label>
+      <select id="sel-sort" onchange="renderComparador()">
+        <option value="desc">Mayor a menor</option>
+        <option value="asc">Menor a mayor</option>
+      </select>
+    </div>
+    <div id="comp-content"></div>
+  </div>
+
+  <!-- Comentarios frecuentes -->
+  <div class="section-title">Comentarios más frecuentes</div>
+  <div class="panel mb24" id="panel-comments">
+    <div class="select-row">
+      <label>Filtrar por tipo:</label>
+      <select id="sel-tipo" onchange="renderComments()">
+        <option value="all">Todos</option>
+        <option value="out">out + lowQuality</option>
+        <option value="ethical">ethical</option>
+        <option value="copyright">copyright</option>
+        <option value="trademark">trademark</option>
+        <option value="invalid">invalid</option>
+        <option value="error">error</option>
+        <option value="plagiarism">plagiarism</option>
+        <option value="support_ticket">support_ticket</option>
+      </select>
+    </div>
+    <div class="scroll-wrap"><table class="comments-table" id="comments-table"></table></div>
+  </div>
+
+</div><!-- /page-2025 -->
+
+<!-- ===================== 2026 ===================== -->
+<div class="page" id="page-2026">
+  <div class="coming">sin datos todavía</div>
+</div>
+
+<!-- ===================== RESUMEN ===================== -->
+<div class="page" id="page-resumen">
+  <div class="grid4 mb24" id="res-kpis"></div>
+  <div class="section-title">Filtros</div>
+  <div class="panel mb24" style="padding:14px 16px;">
+    <div class="select-row" style="flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;align-items:center;gap:8px;"><label>Año:</label><select id="res-year" onchange="onYearChange()"></select></div>
+      <div style="display:flex;align-items:center;gap:8px;"><label>Mes desde:</label><select id="res-from" onchange="renderResumen()"></select></div>
+      <div style="display:flex;align-items:center;gap:8px;"><label>Mes hasta:</label><select id="res-to" onchange="renderResumen()"></select></div>
+      <div style="display:flex;align-items:center;gap:8px;"><label>Curador:</label><select id="res-curator" onchange="renderResumen()"><option value="all">Todos</option></select></div>
+      <button onclick="downloadCSV()" style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:7px 16px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;letter-spacing:.03em;">&#8595; Descargar CSV</button>
+    </div>
+  </div>
+  <div class="grid2 mb24">
+    <div class="panel" id="res-curator-panel"></div>
+    <div class="panel" id="res-motivos-panel"></div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+// ─── DATA ──────────────────────────────────────────────────────────────────
+const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+// ── DATA BY YEAR ──
+// To add 2026: copy the ALL_DATA['2025'] block, change the key to '2026',
+// and fill in the monthly values per curator. Use null for months with no data.
+const ALL_DATA = {
+  '2025': {
+    grandTotal: 670024,
+    curators: [
+      {name:'Silvia Salvador',    d:[245,2288,10789,1109,20,8,286,6406,1173,203,27,33824]},
+      {name:'Migue Tomé',         d:[19669,2039,null,null,null,null,null,null,null,null,null,null]},
+      {name:'Mariano Castro',     d:[14037,8148,null,4230,3889,122,7435,3904,3559,11014,1054,8154]},
+      {name:'Lidia Rosa',         d:[134,8220,3184,2736,1557,646,64,8,1914,1394,1026,20381]},
+      {name:'Pablo Castaño',      d:[17725,5769,1,300,3277,391,8563,5481,1234,8552,8488,80]},
+      {name:'Carmen Luque',       d:[2140,2515,2902,3118,4197,2398,163,24,1923,2488,1160,1403]},
+      {name:'Ainhoa Fernández',   d:[14074,5667,6437,4148,4204,1361,5709,5839,4697,7089,10183,23387]},
+      {name:'Mateo Sierra',       d:[15044,5701,7402,1303,1555,914,5491,3095,1020,6356,1806,null]},
+      {name:'Mauricio Sarmiento', d:[15030,11069,4066,3773,4494,3046,9733,2836,1320,14434,81,null]},
+      {name:'Betty Bermejo',      d:[15511,9236,363,2282,4381,673,3765,751,3893,10354,2299,null]},
+      {name:'Juan Andrés Ávila',  d:[15013,6297,2869,1353,3465,2414,6935,5526,4250,6082,3480,null]},
+      {name:'Marta Lozano',       d:[10037,6056,2712,2344,240,52,1566,2420,5670,7945,8677,2676]},
+      {name:'Adrián Suárez',      d:[null,null,null,null,null,null,null,null,null,null,736,null]},
+      {name:'Julio Paniagua',     d:[null,null,null,null,null,null,null,null,null,null,32,1456]},
+      {name:'Álvaro González',    d:[null,null,null,null,null,null,null,null,null,null,null,2979]},
+      {name:'Alessia Pignetti',   d:[null,null,null,null,1481,801,null,null,null,null,null,null]},
+      {name:'Jose Gallego',       d:[null,null,null,null,1520,626,null,null,null,null,null,null]},
+      {name:'Moises Muley',       d:[null,null,null,null,3330,2142,null,null,null,null,null,null]},
+      {name:'Simona Tolomei',     d:[null,null,null,null,1298,999,null,null,null,null,null,null]},
+      {name:'Verónica Capasso',   d:[null,null,null,null,5946,1408,null,null,null,null,null,null]},
+      {name:'Alberto Sarriá',     d:[null,null,null,null,1869,262,null,null,null,null,null,null]},
+    ],
+    motivos: [
+      {tipo:'out',      label:'Out + Low Quality',  total:242209, color:'#4f8ef7'},
+      {tipo:'ethical',  label:'Ethical / Sensitive', total:97379,  color:'#e8529a'},
+      {tipo:'copyright',label:'Copyright',           total:104117, color:'#9d8ef5'},
+      {tipo:'trademark',label:'Trademark',           total:29496,  color:'#f5a623'},
+      {tipo:'invalid',  label:'Invalid',             total:13131,  color:'#2ec4b6'},
+      {tipo:'error',    label:'Error técnico',       total:2528,   color:'#f04a4a'},
+      {tipo:'plagiarism',label:'Plagiarism',         total:30,     color:'#9aa0af'},
+      {tipo:'support_ticket',label:'Support ticket', total:100,    color:'#3dd68c'},
+    ],
+  },
+  // ── 2026: descomenta y rellena cuando tengas los datos ──
+  // '2026': {
+  //   grandTotal: 0,
+  //   curators: [
+  //     {name:'Silvia Salvador', d:[null,null,null,null,null,null,null,null,null,null,null,null]},
+  //     // ... añade más curadores
+  //   ],
+  //   motivos: [
+  //     {tipo:'out',      label:'Out + Low Quality',  total:0, color:'#4f8ef7'},
+  //     {tipo:'ethical',  label:'Ethical / Sensitive', total:0, color:'#e8529a'},
+  //     {tipo:'copyright',label:'Copyright',           total:0, color:'#9d8ef5'},
+  //     {tipo:'trademark',label:'Trademark',           total:0, color:'#f5a623'},
+  //     {tipo:'invalid',  label:'Invalid',             total:0, color:'#2ec4b6'},
+  //     {tipo:'error',    label:'Error técnico',       total:0, color:'#f04a4a'},
+  //     {tipo:'plagiarism',label:'Plagiarism',         total:0, color:'#9aa0af'},
+  //     {tipo:'support_ticket',label:'Support ticket', total:0, color:'#3dd68c'},
+  //   ],
+  // },
+};
+
+// Active year data (2025 by default, used by 2025 tab)
+const CURATORS = ALL_DATA['2025'].curators;
+CURATORS.forEach(c => {
+  c.total = c.d.reduce((s,v)=>s+(v||0),0);
+  const active = c.d.filter(v=>v!==null).length;
+  c.avg = active>0 ? Math.round(c.total/active) : 0;
+  c.active = active;
+});
+const GRAND_TOTAL = ALL_DATA['2025'].grandTotal;
+const MONTHS_TOTAL = MONTHS.map((_,i)=>CURATORS.reduce((s,c)=>s+(c.d[i]||0),0));
+const MAX_CURATOR = Math.max(...CURATORS.map(c=>c.total));
+const MAX_AVG = Math.max(...CURATORS.map(c=>c.avg));
+const MOTIVOS = ALL_DATA['2025'].motivos;
+const MOTIVE_TOTAL = MOTIVOS.reduce((s,m)=>s+m.total,0);
+
+// Comments
+const COMMENTS_RAW = [
+  // out+lowQuality
+  {tipo:'out',comment:'Quality (incl. AI & distortions)',n:184012},
+  {tipo:'out',comment:'Functionality',n:54219},
+  {tipo:'out',comment:'Similar / Duplicate',n:1399},
+  {tipo:'out',comment:'Other',n:2579},
+  // copyright
+  {tipo:'copyright',comment:'volkswagen',n:11896},
+  {tipo:'copyright',comment:'copyright (genérico)',n:10218},
+  {tipo:'copyright',comment:'lego',n:10132},
+  {tipo:'copyright',comment:'apple',n:7760},
+  {tipo:'copyright',comment:'trump',n:6375},
+  {tipo:'copyright',comment:'disney',n:5561},
+  {tipo:'copyright',comment:'golden gate bridge',n:5556},
+  {tipo:'copyright',comment:'nike',n:4991},
+  {tipo:'copyright',comment:'spiderman',n:4882},
+  {tipo:'copyright',comment:'marvel',n:4181},
+  {tipo:'copyright',comment:'martin luther king',n:3377},
+  {tipo:'copyright',comment:'pokemon',n:3255},
+  {tipo:'copyright',comment:'one piece',n:3041},
+  {tipo:'copyright',comment:'copyright & trademark',n:3032},
+  {tipo:'copyright',comment:'polaroid',n:2974},
+  {tipo:'copyright',comment:'barbie',n:2604},
+  {tipo:'copyright',comment:'super mario',n:2478},
+  {tipo:'copyright',comment:'petronas towers',n:2474},
+  {tipo:'copyright',comment:'cristo redentor',n:2375},
+  {tipo:'copyright',comment:'lamborghini',n:2371},
+  // ethical
+  {tipo:'ethical',comment:'sensitive',n:84963},
+  {tipo:'ethical',comment:'nsfw',n:3495},
+  {tipo:'ethical',comment:'sensitive+quality',n:2112},
+  {tipo:'ethical',comment:'boobs',n:1918},
+  {tipo:'ethical',comment:'sexy',n:1595},
+  {tipo:'ethical',comment:'sexy busty girl',n:572},
+  {tipo:'ethical',comment:'sensitive sexy woman',n:552},
+  {tipo:'ethical',comment:'busty',n:415},
+  {tipo:'ethical',comment:'sexy anime girl',n:381},
+  {tipo:'ethical',comment:'unjustified nude',n:312},
+  {tipo:'ethical',comment:'sensitive + quality',n:309},
+  {tipo:'ethical',comment:'gore',n:275},
+  {tipo:'ethical',comment:'suggestive',n:272},
+  {tipo:'ethical',comment:'big sexy butt',n:267},
+  {tipo:'ethical',comment:'sensitive (jira)',n:261},
+  {tipo:'ethical',comment:'anime sexy',n:258},
+  {tipo:'ethical',comment:'animal abuse',n:244},
+  {tipo:'ethical',comment:'sensitivie+quality',n:219},
+  {tipo:'ethical',comment:'anime girl big boobs',n:210},
+  {tipo:'ethical',comment:'sexy anime girl huge breast',n:207},
+  // trademark
+  {tipo:'trademark',comment:'apple',n:6079},
+  {tipo:'trademark',comment:'nike',n:2090},
+  {tipo:'trademark',comment:'taj mahal',n:2035},
+  {tipo:'trademark',comment:'jeep',n:1291},
+  {tipo:'trademark',comment:'audi',n:821},
+  {tipo:'trademark',comment:'tesla',n:760},
+  {tipo:'trademark',comment:'tokyo tower',n:642},
+  {tipo:'trademark',comment:'bluetooth',n:565},
+  {tipo:'trademark',comment:'cocacola',n:521},
+  {tipo:'trademark',comment:'starbucks',n:514},
+  {tipo:'trademark',comment:'marcas football',n:487},
+  {tipo:'trademark',comment:'bmw',n:473},
+  {tipo:'trademark',comment:'adidas',n:414},
+  {tipo:'trademark',comment:'mercedes',n:385},
+  {tipo:'trademark',comment:'sydney opera house',n:369},
+  {tipo:'trademark',comment:'spotify',n:367},
+  {tipo:'trademark',comment:'pepsi',n:305},
+  {tipo:'trademark',comment:'eiffel tower',n:299},
+  {tipo:'trademark',comment:'nike & adidas logo',n:297},
+  {tipo:'trademark',comment:'sudoku',n:289},
+  // invalid
+  {tipo:'invalid',comment:'it is not an editable file',n:6868},
+  {tipo:'invalid',comment:'different file and preview',n:1680},
+  {tipo:'invalid',comment:'different file and preview (jira)',n:1404},
+  {tipo:'invalid',comment:'it is not an editable file (jira)',n:1176},
+  {tipo:'invalid',comment:'not editable',n:494},
+  {tipo:'invalid',comment:'functionality',n:368},
+  {tipo:'invalid',comment:'different preview',n:267},
+  {tipo:'invalid',comment:'similar',n:179},
+  {tipo:'invalid',comment:'polaroid',n:163},
+  {tipo:'invalid',comment:'not editable (jira)',n:131},
+  {tipo:'invalid',comment:'different file and preview - jira',n:130},
+  {tipo:'invalid',comment:'it is not an editable file - jira',n:92},
+  {tipo:'invalid',comment:'volkswagen',n:89},
+  {tipo:'invalid',comment:'file does not open',n:86},
+  {tipo:'invalid',comment:'file does not open (jira)',n:81},
+  {tipo:'invalid',comment:'sensitive',n:81},
+  {tipo:'invalid',comment:'quality',n:70},
+  {tipo:'invalid',comment:'empty resource',n:40},
+  {tipo:'invalid',comment:'grey stripe',n:33},
+  {tipo:'invalid',comment:"it's not an editable file",n:31},
+  // error
+  {tipo:'error',comment:'image included',n:746},
+  {tipo:'error',comment:'bad cut',n:350},
+  {tipo:'error',comment:'misspelling',n:305},
+  {tipo:'error',comment:'text',n:247},
+  {tipo:'error',comment:'quality',n:238},
+  {tipo:'error',comment:'archivos con más de un eps en su interior',n:221},
+  {tipo:'error',comment:'hands - distortion',n:130},
+  {tipo:'error',comment:'title',n:114},
+  {tipo:'error',comment:'watermark',n:109},
+  {tipo:'error',comment:'wrong text ai',n:59},
+  {tipo:'error',comment:'text - ai',n:49},
+  {tipo:'error',comment:'wrong map',n:28},
+  {tipo:'error',comment:'text (jira)',n:26},
+  {tipo:'error',comment:'misspelling + distorsions',n:25},
+  {tipo:'error',comment:'monster',n:23},
+  {tipo:'error',comment:'wrong text',n:21},
+  {tipo:'error',comment:'similar',n:15},
+  {tipo:'error',comment:'misspelling (ai)',n:15},
+  {tipo:'error',comment:'functionality',n:13},
+  {tipo:'error',comment:'distortions',n:13},
+  // plagiarism
+  {tipo:'plagiarism',comment:'IDs de recursos referenciados',n:27},
+  {tipo:'plagiarism',comment:'otros (jira, legal issues, ip-claims)',n:3},
+  // support
+  {tipo:'support_ticket',comment:'ip claim / ip claims',n:75},
+  {tipo:'support_ticket',comment:'quality',n:20},
+  {tipo:'support_ticket',comment:'otros (sensitive, jira, quejas)',n:5},
+];
+
+const TIPO_MAP = {
+  'out':'tag-out','ethical':'tag-ethical','copyright':'tag-copy',
+  'trademark':'tag-trade','invalid':'tag-invalid','error':'tag-error',
+  'plagiarism':'tag-plag','support_ticket':'tag-support'
+};
+const TIPO_LABEL = {
+  'out':'out+LQ','ethical':'ethical','copyright':'copyright',
+  'trademark':'trademark','invalid':'invalid','error':'error',
+  'plagiarism':'plagiarism','support_ticket':'support'
+};
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+function fmt(n){ if(n===null||n===undefined) return '<span class="dash-cell">—</span>';
+  return n===0?'<span class="cell-0">0</span>':n.toLocaleString('es-ES'); }
+function fmtN(n){ return n.toLocaleString('es-ES'); }
+function pct(n,t){ return ((n/t)*100).toFixed(1)+'%'; }
+
+function heatColor(v, max){
+  if(v===null||v===0) return '';
+  const ratio = v/max;
+  const stops = [
+    [0,   '#1e2026'],
+    [0.1, '#1a2d4a'],
+    [0.3, '#1a3d6e'],
+    [0.6, '#1e5799'],
+    [0.8, '#2c72c0'],
+    [1.0, '#4f8ef7'],
+  ];
+  for(let i=1;i<stops.length;i++){
+    if(ratio<=stops[i][0]){
+      return `background:${stops[i][1]};`;
+    }
+  }
+  return `background:${stops[stops.length-1][1]};`;
+}
+
+// ─── KPIs ──────────────────────────────────────────────────────────────────
+function renderKPIs(){
+  const el = document.getElementById('kpis');
+  const activeCurators = CURATORS.filter(c=>c.total>0).length;
+  const topCurator = [...CURATORS].sort((a,b)=>b.total-a.total)[0];
+  const bestMonth = MONTHS_TOTAL.indexOf(Math.max(...MONTHS_TOTAL));
+  el.innerHTML = `
+    <div class="metric"><div class="label">Total reportes</div><div class="value" style="color:#4f8ef7">${fmtN(GRAND_TOTAL)}</div><div class="sub">año 2025</div></div>
+    <div class="metric"><div class="label">Curadores activos</div><div class="value" style="color:#3dd68c">${activeCurators}</div><div class="sub">de 21 en plantilla</div></div>
+    <div class="metric"><div class="label">Top curador</div><div class="value" style="font-size:16px;padding-top:4px;">${topCurator.name}</div><div class="sub">${fmtN(topCurator.total)} reportes</div></div>
+    <div class="metric"><div class="label">Mes más activo</div><div class="value" style="font-size:20px;padding-top:4px;">${MONTHS[bestMonth]}</div><div class="sub">${fmtN(MONTHS_TOTAL[bestMonth])} reportes</div></div>
+  `;
+}
+
+// ─── MOTIVOS ───────────────────────────────────────────────────────────────
+function renderMotivos(){
+  // Pie SVG
+  const panelLeft = document.getElementById('panel-motivos');
+  const R=70, cx=90, cy=90, total=MOTIVE_TOTAL;
+  let startAngle = -Math.PI/2;
+  let slices = '';
+  MOTIVOS.forEach(m=>{
+    const angle = (m.total/total)*2*Math.PI;
+    const x1=cx+R*Math.cos(startAngle), y1=cy+R*Math.sin(startAngle);
+    const x2=cx+R*Math.cos(startAngle+angle), y2=cy+R*Math.sin(startAngle+angle);
+    const large=angle>Math.PI?1:0;
+    slices+=`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${R},${R} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${m.color}" opacity=".9"/>`;
+    startAngle+=angle;
+  });
+  const legendItems = MOTIVOS.map(m=>`
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="width:10px;height:10px;border-radius:2px;background:${m.color};flex-shrink:0;"></span>
+      <span style="flex:1;font-size:12px;">${m.label}</span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${pct(m.total,MOTIVE_TOTAL)}</span>
+    </div>`).join('');
+  panelLeft.innerHTML = `
+    <div class="panel-header"><span class="panel-title">Distribución por tipo</span></div>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+      <svg width="180" height="180" viewBox="0 0 180 180">${slices}
+        <circle cx="${cx}" cy="${cy}" r="32" fill="var(--surface)"/>
+        <text x="${cx}" y="${cy+4}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="var(--mono)">${fmtN(MOTIVE_TOTAL)}</text>
+      </svg>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">${legendItems}</div>
+    </div>`;
+
+  // Barras horizontales
+  const panelRight = document.getElementById('panel-motivos-detail');
+  const maxM = Math.max(...MOTIVOS.map(m=>m.total));
+  const rows = MOTIVOS.map(m=>{
+    const w = Math.round((m.total/maxM)*100);
+    return `<div class="motivo-row">
+      <span class="motivo-dot" style="background:${m.color}"></span>
+      <span class="motivo-name">${m.label}</span>
+      <div style="width:120px;height:4px;background:var(--border);border-radius:2px;flex-shrink:0;">
+        <div style="width:${w}%;height:4px;border-radius:2px;background:${m.color};"></div>
+      </div>
+      <span class="motivo-pct">${pct(m.total,MOTIVE_TOTAL)}</span>
+      <span class="motivo-val">${fmtN(m.total)}</span>
+    </div>`;
+  }).join('');
+  panelRight.innerHTML = `<div class="panel-header"><span class="panel-title">Totales por tipo</span></div>${rows}`;
+}
+
+// ─── RANKING ───────────────────────────────────────────────────────────────
+function renderRanking(){
+  const sorted = [...CURATORS].sort((a,b)=>b.total-a.total);
+  const sortedAvg = [...CURATORS].sort((a,b)=>b.avg-a.avg);
+  const colors = ['#f5a623','#9aa0af','#cd7f32'];
+
+  const makeRows = (arr, valKey, maxVal, label) => arr.map((c,i)=>{
+    const w = Math.round((c[valKey]/maxVal)*100);
+    const color = i<3?colors[i]:c.total>0?'#4f8ef7':'var(--border)';
+    return `<div class="rank-item">
+      <span class="rank-n">${i+1}</span>
+      <span class="rank-name">${c.name}</span>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${w}%;background:${color};"></div></div>
+      <span class="rank-val">${fmtN(c[valKey])}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('panel-ranking').innerHTML =
+    `<div class="panel-header"><span class="panel-title">Por total de reportes</span></div>`
+    + makeRows(sorted,'total',MAX_CURATOR,'total');
+  document.getElementById('panel-ranking-avg').innerHTML =
+    `<div class="panel-header"><span class="panel-title">Por media mensual (meses activos)</span></div>`
+    + makeRows(sortedAvg,'avg',MAX_AVG,'avg');
+}
+
+// ─── HEATMAP ───────────────────────────────────────────────────────────────
+function renderHeatmap(){
+  const maxCell = Math.max(...CURATORS.flatMap(c=>c.d.filter(v=>v!==null)));
+  const sorted = [...CURATORS].sort((a,b)=>b.total-a.total);
+  const thead = `<tr><th>Curador</th>${MONTHS.map(m=>`<th>${m}</th>`).join('')}<th style="color:var(--text);">TOTAL</th></tr>`;
+  const tbody = sorted.map(c=>{
+    const cells = c.d.map(v=>{
+      if(v===null) return `<td class="dash-cell">—</td>`;
+      const style = heatColor(v,maxCell);
+      return `<td style="${style}color:${v>0?'var(--text)':'var(--border2)'}">${v>0?fmtN(v):'—'}</td>`;
+    }).join('');
+    return `<tr><td>${c.name}</td>${cells}<td style="font-weight:600;">${fmtN(c.total)}</td></tr>`;
+  }).join('');
+  const tfoot = `<tr class="tfoot"><td>TOTAL</td>${MONTHS_TOTAL.map(v=>`<td style="font-weight:600;">${fmtN(v)}</td>`).join('')}<td style="font-weight:600;">${fmtN(GRAND_TOTAL)}</td></tr>`;
+  document.getElementById('panel-heatmap').innerHTML =
+    `<table class="heatmap"><thead>${thead}</thead><tbody>${tbody}</tbody><tfoot>${tfoot}</tfoot></table>`;
+}
+
+// ─── COMPARADOR ────────────────────────────────────────────────────────────
+function initComparador(){
+  const sel = document.getElementById('sel-mes');
+  MONTHS.forEach((m,i)=>{
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+  renderComparador();
+}
+function renderComparador(){
+  const mi = parseInt(document.getElementById('sel-mes').value);
+  const sortDir = document.getElementById('sel-sort').value;
+  let data = CURATORS.map(c=>({name:c.name, v:c.d[mi]})).filter(x=>x.v!==null&&x.v>0);
+  if(sortDir==='desc') data.sort((a,b)=>b.v-a.v);
+  else data.sort((a,b)=>a.v-b.v);
+  const maxV = data.length>0?Math.max(...data.map(x=>x.v)):1;
+  const monthTotal = data.reduce((s,x)=>s+x.v,0);
+  const palette = ['#4f8ef7','#7c6af5','#e8529a','#f5a623','#2ec4b6','#3dd68c','#f04a4a','#9d8ef5','#52c4e8','#f5c842','#ff8c42','#c4f552'];
+
+  if(data.length===0){
+    document.getElementById('comp-content').innerHTML = '<p style="color:var(--muted);font-size:12px;padding:8px 0;">Sin datos para este mes.</p>';
+    return;
+  }
+  const bars = data.map((x,i)=>{
+    const w = Math.round((x.v/maxV)*100);
+    const color = palette[i%palette.length];
+    const share = ((x.v/monthTotal)*100).toFixed(1);
+    return `<div class="comp-bar-row">
+      <div class="comp-bar-name">${x.name}</div>
+      <div class="comp-bar-track">
+        <div class="comp-bar-fill" style="width:${w}%;background:${color};">${w>15?fmtN(x.v):''}</div>
+      </div>
+      <div class="comp-bar-val">${w<=15?fmtN(x.v):''} <span style="color:var(--border2)">${share}%</span></div>
+    </div>`;
+  }).join('');
+  // Total bar
+  const totalBar = `<div class="comp-bar-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+    <div class="comp-bar-name" style="color:var(--muted);font-size:11px;">TOTAL MES</div>
+    <div style="flex:1;"></div>
+    <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);width:60px;text-align:right;">${fmtN(monthTotal)}</div>
+  </div>`;
+  document.getElementById('comp-content').innerHTML =
+    `<div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px;">${MONTHS[mi]} 2025 — ${data.length} curadores activos</div>`
+    + `<div class="comp-bars">${bars}${totalBar}</div>`;
+}
+
+function getCategory(tipo) {
+  const t = tipo.toLowerCase();
+  if (t.includes('out') || t.includes('support_ticket')) return 'Quality';
+  if (t.includes('copyright') || t.includes('trademark') || t.includes('plagiarism')) return 'Copyright';
+  if (t.includes('ethical')) return 'Sensitive';
+  if (t.includes('invalid') || t.includes('error')) return 'Error files';
+  if (t.includes('duplicate')) return 'Duplicate';
+  return 'Other';
+}
+
+function getSelectedYear() {
+  return document.getElementById('res-year').value;
+}
+
+function onYearChange() {
+  const year = getSelectedYear();
+  const yearData = ALL_DATA[year];
+  const curSel = document.getElementById('res-curator');
+  curSel.innerHTML = '<option value="all">Todos</option>';
+  if (yearData) {
+    yearData.curators
+      .filter(c => c.d.reduce((s,v)=>s+(v||0),0) > 0)
+      .sort((a,b) => a.name.localeCompare(b.name))
+      .forEach(c => { curSel.innerHTML += `<option value="${c.name}">${c.name}</option>`; });
+  }
+  renderResumen();
+}
+
+function initResumen() {
+  // Year selector — only show years with data
+  const yearSel = document.getElementById('res-year');
+  Object.keys(ALL_DATA).sort().forEach(y => {
+    yearSel.innerHTML += `<option value="${y}">${y}</option>`;
+  });
+  // Month selectors
+  const fromSel = document.getElementById('res-from');
+  const toSel   = document.getElementById('res-to');
+  MONTHS.forEach((m,i) => {
+    fromSel.innerHTML += `<option value="${i}">${m}</option>`;
+    toSel.innerHTML   += `<option value="${i}" ${i===11?'selected':''}>${m}</option>`;
+  });
+  // Curator selector for default year
+  onYearChange();
+}
+
+function renderResumen() {
+  const from = parseInt(document.getElementById('res-from').value);
+  const to   = parseInt(document.getElementById('res-to').value);
+  if (to < from) { document.getElementById('res-to').value = from; return renderResumen(); }
+  const year = getSelectedYear();
+  const yearData = ALL_DATA[year];
+
+  if (!yearData) {
+    ['res-kpis','res-curator-panel','res-motivos-panel'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = `<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:20px 0;text-align:center;">// sin datos para ${year}</div>`;
+    });
+    return;
+  }
+
+  const curatorFilter = document.getElementById('res-curator').value;
+  let curators = yearData.curators;
+  if (curatorFilter !== 'all') curators = curators.filter(c=>c.name===curatorFilter);
+
+  // Totals per curator in selected month range
+  const curatorTotals = curators.map(c => {
+    let sum = 0;
+    for(let i=from;i<=to;i++) sum += (c.d[i]||0);
+    return {name:c.name, total:sum};
+  }).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+
+  const grandTotal = curatorTotals.reduce((s,x)=>s+x.total,0);
+  const rangeLabel = from===to ? MONTHS[from] : `${MONTHS[from]} – ${MONTHS[to]}`;
+
+  // KPIs
+  const topC = curatorTotals.length>0 ? curatorTotals[0] : {name:'—',total:0};
+  document.getElementById('res-kpis').innerHTML = `
+    <div class="metric"><div class="label">Total reportes</div><div class="value" style="color:#4f8ef7">${fmtN(grandTotal)}</div><div class="sub">${rangeLabel} ${year}</div></div>
+    <div class="metric"><div class="label">Curadores activos</div><div class="value" style="color:#3dd68c">${curatorTotals.length}</div><div class="sub">en el periodo</div></div>
+    <div class="metric"><div class="label">Top curador</div><div class="value" style="font-size:15px;padding-top:6px;">${topC.name}</div><div class="sub">${fmtN(topC.total)} reportes</div></div>
+    <div class="metric"><div class="label">Media por curador</div><div class="value" style="font-family:var(--mono);font-size:20px;padding-top:4px;">${curatorTotals.length>0?fmtN(Math.round(grandTotal/curatorTotals.length)):'—'}</div><div class="sub">en el periodo</div></div>
+  `;
+
+  // Curator totals table (real data)
+  const detailRows = curatorTotals.map((c,i) => `<tr>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${i+1}</td>
+    <td style="font-weight:500;">${c.name}</td>
+    <td style="font-family:var(--mono);font-weight:600;">${fmtN(c.total)}</td>
+    <td style="font-family:var(--mono);color:var(--muted);">${pct(c.total,grandTotal||1)}</td>
+  </tr>`).join('');
+  document.getElementById('res-curator-panel').innerHTML = `
+    <div class="panel-header"><span class="panel-title">Total por curador</span></div>
+    <table class="comments-table">
+      <thead><tr><th>#</th><th>Curador</th><th>Total</th><th>%</th></tr></thead>
+      <tbody>${detailRows}</tbody>
+      <tfoot><tr style="border-top:1px solid var(--border2);">
+        <td></td><td style="font-weight:600;">TOTAL</td>
+        <td style="font-family:var(--mono);font-weight:600;">${fmtN(grandTotal)}</td>
+        <td style="font-family:var(--mono);color:var(--muted);">100%</td>
+      </tr></tfoot>
+    </table>`;
+
+  // Global motivos breakdown (real data — annual, not filterable by month)
+  const motivos = yearData.motivos;
+  const motivoTotal = motivos.reduce((s,m)=>s+m.total,0);
+  const maxM = Math.max(...motivos.map(m=>m.total));
+  const motivoRows = motivos.map(m => {
+    const w = Math.round((m.total/maxM)*100);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="width:10px;height:10px;border-radius:2px;background:${m.color};flex-shrink:0;"></span>
+      <span style="flex:1;font-size:12px;font-weight:500;">${m.label}</span>
+      <div style="width:100px;height:4px;background:var(--border);border-radius:2px;flex-shrink:0;">
+        <div style="width:${w}%;height:4px;border-radius:2px;background:${m.color};"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted);width:42px;text-align:right;">${pct(m.total,motivoTotal)}</span>
+      <span style="font-family:var(--mono);font-size:11px;width:62px;text-align:right;">${fmtN(m.total)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('res-motivos-panel').innerHTML = `
+    <div class="panel-header">
+      <span class="panel-title">Distribución por tipo — ${year} completo</span>
+      <span style="font-size:10px;color:var(--muted);font-family:var(--mono);">datos anuales, no filtrables por mes</span>
+    </div>
+    ${motivoRows}
+    <div style="display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border2);margin-top:4px;">
+      <span style="font-family:var(--mono);font-size:12px;font-weight:600;">TOTAL: ${fmtN(motivoTotal)}</span>
+    </div>`;
+}
+
+function downloadCSV() {
+  const from = parseInt(document.getElementById('res-from').value);
+  const to   = parseInt(document.getElementById('res-to').value);
+  const year = getSelectedYear();
+  const yearData = ALL_DATA[year];
+  if (!yearData) return;
+  const rangeLabel = from===to ? MONTHS[from] : `${MONTHS[from]}-${MONTHS[to]}`;
+  const curatorFilter = document.getElementById('res-curator').value;
+  let curators = yearData.curators;
+  if (curatorFilter !== 'all') curators = curators.filter(c=>c.name===curatorFilter);
+  const curatorTotals = curators.map(c => {
+    let sum = 0;
+    for(let i=from;i<=to;i++) sum += (c.d[i]||0);
+    return {name:c.name, total:sum};
+  }).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+  const grandTotal = curatorTotals.reduce((s,x)=>s+x.total,0);
+  let csv = `Año,Periodo,Curador,Total,%\n`;
+  curatorTotals.forEach(c => {
+    csv += `${year},"${rangeLabel}","${c.name}",${c.total},${((c.total/(grandTotal||1))*100).toFixed(1)}%\n`;
+  });
+  csv += `${year},"${rangeLabel}",TOTAL,${grandTotal},100%\n`;
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `resumen_${year}_${rangeLabel}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ─── COMMENTS ──────────────────────────────────────────────────────────────
+function renderComments(){
+  const tipo = document.getElementById('sel-tipo').value;
+  let data = tipo==='all' ? COMMENTS_RAW : COMMENTS_RAW.filter(c=>c.tipo===tipo);
+  data = [...data].sort((a,b)=>b.n-a.n);
+  const totalFiltered = data.reduce((s,r)=>s+r.n,0);
+  const thead = `<thead><tr><th>#</th><th>Tipo</th><th>Comentario</th><th>Total</th><th>% del tipo</th></tr></thead>`;
+  const tbody = data.map((r,i)=>{
+    const tipoTotal = COMMENTS_RAW.filter(c=>c.tipo===r.tipo).reduce((s,x)=>s+x.n,0);
+    const cls = TIPO_MAP[r.tipo]||'';
+    const lbl = TIPO_LABEL[r.tipo]||r.tipo;
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${i+1}</td>
+      <td><span class="tag ${cls}">${lbl}</span></td>
+      <td>${r.comment}</td>
+      <td style="font-family:var(--mono);font-weight:500;">${fmtN(r.n)}</td>
+      <td style="font-family:var(--mono);color:var(--muted);">${pct(r.n,tipoTotal)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('comments-table').innerHTML = `${thead}<tbody>${tbody}</tbody>`;
+}
+
+// ─── TABS ──────────────────────────────────────────────────────────────────
+function switchTab(year){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('page-'+year).classList.add('active');
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+renderKPIs();
+renderMotivos();
+renderRanking();
+renderHeatmap();
+initComparador();
+renderComments();
+initResumen();
+</script>
+</body>
+</html>
