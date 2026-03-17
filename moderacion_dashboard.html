@@ -172,8 +172,8 @@ label { font-size: 11px; color: var(--muted); }
   <!-- Ranking por curador -->
   <div class="section-title">Ranking curadores — año completo</div>
   <div class="grid2 mb24">
+    <div class="panel" id="panel-ranking-pie"></div>
     <div class="panel" id="panel-ranking"></div>
-    <div class="panel" id="panel-ranking-avg"></div>
   </div>
 
   <!-- Heatmap por mes -->
@@ -546,10 +546,42 @@ function renderMotivos(){
 // ─── RANKING ───────────────────────────────────────────────────────────────
 function renderRanking(){
   const sorted = [...CURATORS].sort((a,b)=>b.total-a.total);
-  const sortedAvg = [...CURATORS].sort((a,b)=>b.avg-a.avg);
   const colors = ['#f5a623','#9aa0af','#cd7f32'];
+  const palette = ['#4f8ef7','#7c6af5','#e8529a','#f5a623','#2ec4b6','#3dd68c','#f04a4a','#9d8ef5','#52c4e8','#f5c842','#ff8c42','#c4f552','#e85252','#52e8c4','#e852c4','#c4e852','#5284e8','#e8a452','#84e852','#5252e8','#e88452'];
 
-  const makeRows = (arr, valKey, maxVal, label) => arr.map((c,i)=>{
+  // Pie chart
+  const activeSorted = sorted.filter(c=>c.total>0);
+  const totalAll = activeSorted.reduce((s,c)=>s+c.total,0);
+  const R=80, cx=100, cy=100;
+  let startAngle = -Math.PI/2;
+  let slices = '';
+  activeSorted.forEach((c,i)=>{
+    const angle = (c.total/totalAll)*2*Math.PI;
+    const x1=cx+R*Math.cos(startAngle), y1=cy+R*Math.sin(startAngle);
+    const x2=cx+R*Math.cos(startAngle+angle), y2=cy+R*Math.sin(startAngle+angle);
+    const large=angle>Math.PI?1:0;
+    const color = palette[i%palette.length];
+    slices+=`<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${R},${R} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${color}" opacity=".9"><title>${c.name}: ${fmtN(c.total)}</title></path>`;
+    startAngle+=angle;
+  });
+  const legendItems = activeSorted.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:7px;padding:3px 0;">
+      <span style="width:8px;height:8px;border-radius:2px;background:${palette[i%palette.length]};flex-shrink:0;"></span>
+      <span style="flex:1;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</span>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">${pct(c.total,totalAll)}</span>
+    </div>`).join('');
+  document.getElementById('panel-ranking-pie').innerHTML = `
+    <div class="panel-header"><span class="panel-title">Distribución por curador</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <svg width="200" height="200" viewBox="0 0 200 200">${slices}
+        <circle cx="${cx}" cy="${cy}" r="36" fill="var(--surface)"/>
+        <text x="${cx}" y="${cy+4}" text-anchor="middle" fill="var(--muted)" font-size="10" font-family="var(--mono)">${fmtN(totalAll)}</text>
+      </svg>
+      <div style="width:100%;max-height:200px;overflow-y:auto;padding-right:4px;">${legendItems}</div>
+    </div>`;
+
+  // Ranking by total
+  const makeRows = (arr, valKey, maxVal) => arr.map((c,i)=>{
     const w = Math.round((c[valKey]/maxVal)*100);
     const color = i<3?colors[i]:c.total>0?'#4f8ef7':'var(--border)';
     return `<div class="rank-item">
@@ -562,10 +594,7 @@ function renderRanking(){
 
   document.getElementById('panel-ranking').innerHTML =
     `<div class="panel-header"><span class="panel-title">Por total de reportes</span></div>`
-    + makeRows(sorted,'total',MAX_CURATOR,'total');
-  document.getElementById('panel-ranking-avg').innerHTML =
-    `<div class="panel-header"><span class="panel-title">Por media mensual (meses activos)</span></div>`
-    + makeRows(sortedAvg,'avg',MAX_AVG,'avg');
+    + makeRows(sorted,'total',MAX_CURATOR);
 }
 
 // ─── HEATMAP ───────────────────────────────────────────────────────────────
@@ -662,9 +691,10 @@ function onYearChange() {
 }
 
 function initResumen() {
-  // Year selector — only show years with data
+  // Year selector — show data years + upcoming years
   const yearSel = document.getElementById('res-year');
-  Object.keys(ALL_DATA).sort().forEach(y => {
+  const allYears = [...new Set([...Object.keys(ALL_DATA), '2026'])].sort();
+  allYears.forEach(y => {
     yearSel.innerHTML += `<option value="${y}">${y}</option>`;
   });
   // Month selectors
