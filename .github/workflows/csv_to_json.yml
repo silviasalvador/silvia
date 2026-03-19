@@ -1,0 +1,27 @@
+name: Convertir CSV exportado de Hex a JSON
+
+on:
+  push:
+    paths:
+      - 'data_export.csv'
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Convertir CSV a JSON
+        run: python3 csv_to_json.py data_export.csv
+
+      - name: Commit y push de data.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --staged --quiet || git commit -m "chore: actualizar datos desde Hex [skip ci]"
+          git push
