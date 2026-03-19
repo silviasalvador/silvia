@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Moderación · Freepik</title>
+  <style>
+    :root {
+      --primary: #00b2a9;
+      --bg: #f5f7fa;
+      --white: #fff;
+      --border: #e2e8f0;
+      --text: #1a202c;
+      --muted: #718096;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+    header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    h1 { font-size: 18px; font-weight: 700; flex: 1; }
+    #last-updated { font-size: 12px; color: var(--muted); }
+    #btn-update {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #btn-update:hover { opacity: 0.88; }
+    #btn-update:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .tabs {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      gap: 0;
+    }
+    .tab {
+      padding: 12px 22px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s;
+    }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    main { padding: 24px; }
+
+    .card {
+      background: var(--white);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th {
+      background: #f7fafc;
+      text-align: left;
+      padding: 11px 16px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    th.num, td.num { text-align: right; }
+    td { padding: 10px 16px; border-bottom: 1px solid #f0f4f8; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f7fafc; }
+
+    .total-row td {
+      font-weight: 700;
+      background: #f7fafc;
+      border-top: 2px solid var(--border);
+      font-size: 13px;
+    }
+
+    #no-data {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    #no-data p { margin-top: 8px; font-size: 12px; }
+
+    .spinner {
+      display: inline-block;
+      width: 13px; height: 13px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .type-error    { color: #c0392b; }
+    .type-copyright { color: #d97706; }
+    .type-duplicate { color: #2563eb; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Panel de Moderación</h1>
+  <span id="last-updated"></span>
+  <button id="btn-update">Actualizar datos</button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-year="2025">2025</button>
+  <button class="tab" data-year="2026">2026</button>
+</div>
+
+<main>
+  <div class="card">
+    <table id="main-table" style="display:none">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+    <div id="no-data">
+      <strong>Sin datos</strong>
+      <p>Pulsa "Actualizar datos" para cargar la información desde BigQuery.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+const CURATORS = {
+  28:  "Silvia Salvador",
+  29:  "Sara Guerra",
+  30:  "Migue Tomé",
+  31:  "Mariano Castro",
+  32:  "Lidia Rosa",
+  33:  "Pablo Castaño",
+  48:  "Carmen Luque",
+  51:  "Ainhoa Fernández",
+  52:  "Julia Alejo",
+  91:  "Mateo Sierra",
+  92:  "Mauricio Sarmiento",
+  93:  "Betty Bermejo",
+  94:  "Juan Andrés Ávila",
+  186: "Marta Lozano",
+  207: "Adrián Suárez",
+  216: "Gabriel Martínez",
+  221: "Julio Paniagua",
+  244: "Lorena Luján",
+  245: "Álvaro González",
+  246: "Alessia Pignetti",
+  247: "Jose Gallego",
+  248: "Moisés Muley",
+  249: "Simona Tolomei",
+  250: "Verónica Capasso",
+  251: "Alberto Sarriá",
+  301: "Luz Franco"
+};
+
+const REPO     = "silviasalvador/silvia";
+const WORKFLOW = "update_data.yml";
+
+let allRecords  = [];
+let activeYear  = "2025";
+
+async function loadData() {
+  try {
+    const res  = await fetch('data.json?t=' + Date.now());
+    const json = await res.json();
+    allRecords = json.records || [];
+
+    if (json.updated_at) {
+      const d = new Date(json.updated_at);
+      document.getElementById('last-updated').textContent =
+        'Actualizado: ' + d.toLocaleDateString('es-ES') + ' ' +
+        d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    }
+    renderTable();
+  } catch (e) {
+    document.getElementById('no-data').innerHTML =
+      '<strong>No se pudo cargar data.json</strong><p>' + e.message + '</p>';
+  }
+}
+
+function renderTable() {
+  const records = allRecords.filter(r => r.fecha && r.fecha.startsWith(activeYear));
+
+  const typesSet = new Set();
+  records.forEach(r => typesSet.add(r.type));
+  const types = [...typesSet].sort();
+
+  const byCurator = {};
+  records.forEach(r => {
+    const id = String(r.curator_id);
+    if (!byCurator[id]) { byCurator[id] = { total: 0 }; }
+    byCurator[id][r.type] = (byCurator[id][r.type] || 0) + r.total;
+    byCurator[id].total += r.total;
+  });
+
+  const table  = document.getElementById('main-table');
+  const noData = document.getElementById('no-data');
+
+  if (Object.keys(byCurator).length === 0) {
+    table.style.display = 'none';
+    noData.style.display = 'block';
+    noData.innerHTML = '<strong>Sin datos para ' + activeYear + '</strong>' +
+      (activeYear === '2026' ? '<p>Pulsa "Actualizar datos" para cargar.</p>' : '');
+    return;
+  }
+
+  table.style.display = '';
+  noData.style.display = 'none';
+
+  table.querySelector('thead').innerHTML = `
+    <tr>
+      <th>Curador</th>
+      ${types.map(t => `<th class="num">${capitalize(t)}</th>`).join('')}
+      <th class="num">Total</th>
+    </tr>`;
+
+  const rows   = Object.entries(byCurator).sort((a, b) => b[1].total - a[1].total);
+  const totals = { total: 0 };
+  types.forEach(t => totals[t] = 0);
+  rows.forEach(([, v]) => {
+    types.forEach(t => totals[t] += v[t] || 0);
+    totals.total += v.total;
+  });
+
+  table.querySelector('tbody').innerHTML =
+    rows.map(([id, v]) => `
+      <tr>
+        <td>${CURATORS[id] || 'ID ' + id}</td>
+        ${types.map(t => `<td class="num ${t in v ? 'type-' + t : ''}">${v[t] ? v[t].toLocaleString('es-ES') : '—'}</td>`).join('')}
+        <td class="num"><strong>${v.total.toLocaleString('es-ES')}</strong></td>
+      </tr>`).join('') +
+    `<tr class="total-row">
+      <td>TOTAL</td>
+      ${types.map(t => `<td class="num">${totals[t].toLocaleString('es-ES')}</td>`).join('')}
+      <td class="num">${totals.total.toLocaleString('es-ES')}</td>
+    </tr>`;
+}
+
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeYear = tab.dataset.year;
+    renderTable();
+  });
+});
+
+// Botón actualizar
+document.getElementById('btn-update').addEventListener('click', async () => {
+  let pat = localStorage.getItem('gh_pat');
+  if (!pat) {
+    pat = prompt('GitHub Personal Access Token\n(fine-grained, permiso actions: write):');
+    if (!pat) return;
+    localStorage.setItem('gh_pat', pat);
+  }
+
+  const btn = document.getElementById('btn-update');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Actualizando…';
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pat}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        },
+        body: JSON.stringify({ ref: 'main' })
+      }
+    );
+    if (res.status === 204) {
+      alert('Actualización iniciada ✓\nEn 2-3 minutos recarga la página para ver los datos.');
+    } else if (res.status === 401) {
+      localStorage.removeItem('gh_pat');
+      alert('Token inválido. Bórralo e inténtalo de nuevo.');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert('Error ' + res.status + ': ' + (err.message || 'desconocido'));
+    }
+  } catch (e) {
+    alert('Error de red: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Actualizar datos';
+  }
+});
+
+loadData();
+</script>
+</body>
+</html>
