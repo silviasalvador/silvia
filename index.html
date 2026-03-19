@@ -120,6 +120,28 @@
     .type-error    { color: #c0392b; }
     .type-copyright { color: #d97706; }
     .type-duplicate { color: #2563eb; }
+
+    /* Resumen tab */
+    .res-grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+    @media(max-width:900px){ .res-grid4{grid-template-columns:repeat(2,1fr);} }
+    .res-metric { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .res-metric .label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .res-metric .value { font-size: 24px; font-weight: 700; line-height: 1; color: var(--text); }
+    .res-metric .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .res-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media(max-width:900px){ .res-grid2{grid-template-columns:1fr;} }
+    .res-panel { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .res-panel-title { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+    .res-filter-panel { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .res-filter-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+    .res-filter-row label { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .res-filter-row select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+    .res-filter-row select:focus { outline: none; border-color: #00b2a9; }
+    .res-motivo-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .res-motivo-row:last-child { border-bottom: none; }
+    .res-motivo-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+    .page-resumen { display: none; }
+    .page-resumen.active { display: block; }
   </style>
 </head>
 <body>
@@ -133,6 +155,7 @@
 <div class="tabs">
   <button class="tab active" data-year="2025">2025</button>
   <button class="tab" data-year="2026">2026</button>
+  <button class="tab" data-year="resumen">Resumen</button>
 </div>
 
 <main>
@@ -144,6 +167,30 @@
     <div id="no-data">
       <strong>Sin datos</strong>
       <p>Pulsa "Actualizar datos" para cargar la información desde BigQuery.</p>
+    </div>
+  </div>
+
+  <!-- ── RESUMEN ── -->
+  <div id="page-resumen" class="page-resumen">
+    <div class="res-grid4" id="res-kpis"></div>
+
+    <div class="res-filter-panel">
+      <div class="res-filter-row">
+        <label>Año:</label>
+        <select id="res-year" onchange="onResYearChange()"></select>
+        <label>Mes desde:</label>
+        <select id="res-from" onchange="renderResumen()"></select>
+        <label>Mes hasta:</label>
+        <select id="res-to" onchange="renderResumen()"></select>
+        <label>Curador:</label>
+        <select id="res-curator" onchange="renderResumen()"><option value="all">Todos</option></select>
+        <button onclick="downloadCSV()" style="margin-left:auto;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;">↓ Descargar CSV</button>
+      </div>
+    </div>
+
+    <div class="res-grid2">
+      <div class="res-panel" id="res-curator-panel"></div>
+      <div class="res-panel" id="res-motivos-panel"></div>
     </div>
   </div>
 </main>
@@ -197,6 +244,7 @@ async function loadData() {
         d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     }
     renderTable();
+    initResumen();
   } catch (e) {
     document.getElementById('no-data').innerHTML =
       '<strong>No se pudo cargar data.json</strong><p>' + e.message + '</p>';
@@ -268,8 +316,16 @@ document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
-    activeYear = tab.dataset.year;
-    renderTable();
+    const year = tab.dataset.year;
+    if (year === 'resumen') {
+      document.querySelector('.card').style.display = 'none';
+      document.getElementById('page-resumen').classList.add('active');
+    } else {
+      document.querySelector('.card').style.display = '';
+      document.getElementById('page-resumen').classList.remove('active');
+      activeYear = year;
+      renderTable();
+    }
   });
 });
 
@@ -315,6 +371,169 @@ document.getElementById('btn-update').addEventListener('click', async () => {
     btn.textContent = 'Actualizar datos';
   }
 });
+
+// ── RESUMEN ────────────────────────────────────────────────────────────────
+const MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MOTIVO_COLORS = {
+  error: '#c0392b', copyright: '#d97706', duplicate: '#2563eb',
+  ethical: '#e8529a', trademark: '#f5a623', invalid: '#2ec4b6',
+  out: '#4f8ef7', lowQuality: '#9d8ef5', support_ticket: '#3dd68c',
+  plagiarism: '#9aa0af'
+};
+
+function initResumen() {
+  const years = [...new Set(allRecords.map(r => r.fecha ? r.fecha.slice(0,4) : null).filter(Boolean))].sort();
+  const yearSel = document.getElementById('res-year');
+  yearSel.innerHTML = '';
+  (years.length ? years : ['2025','2026']).forEach(y => {
+    yearSel.innerHTML += `<option value="${y}">${y}</option>`;
+  });
+
+  const fromSel = document.getElementById('res-from');
+  const toSel   = document.getElementById('res-to');
+  fromSel.innerHTML = '';
+  toSel.innerHTML   = '';
+  MONTHS_ES.forEach((m, i) => {
+    fromSel.innerHTML += `<option value="${i}">${m}</option>`;
+    toSel.innerHTML   += `<option value="${i}" ${i===11?'selected':''}>${m}</option>`;
+  });
+
+  onResYearChange();
+}
+
+function onResYearChange() {
+  const year = document.getElementById('res-year').value;
+  const curSel = document.getElementById('res-curator');
+  const names = [...new Set(
+    allRecords
+      .filter(r => r.fecha && r.fecha.startsWith(year))
+      .map(r => CURATORS[r.curator_id] || ('ID ' + r.curator_id))
+  )].sort();
+  curSel.innerHTML = '<option value="all">Todos</option>';
+  names.forEach(n => { curSel.innerHTML += `<option value="${n}">${n}</option>`; });
+  renderResumen();
+}
+
+function renderResumen() {
+  const year    = document.getElementById('res-year').value;
+  const from    = parseInt(document.getElementById('res-from').value);
+  let   to      = parseInt(document.getElementById('res-to').value);
+  if (to < from) { document.getElementById('res-to').value = from; to = from; }
+  const curFilter = document.getElementById('res-curator').value;
+
+  const records = allRecords.filter(r => {
+    if (!r.fecha || !r.fecha.startsWith(year)) return false;
+    const month = parseInt(r.fecha.slice(5,7)) - 1;
+    if (month < from || month > to) return false;
+    if (curFilter !== 'all' && (CURATORS[r.curator_id] || 'ID ' + r.curator_id) !== curFilter) return false;
+    return true;
+  });
+
+  const rangeLabel = from === to ? MONTHS_ES[from] : `${MONTHS_ES[from]}–${MONTHS_ES[to]}`;
+
+  // Totals por curador
+  const byCurator = {};
+  records.forEach(r => {
+    const name = CURATORS[r.curator_id] || ('ID ' + r.curator_id);
+    byCurator[name] = (byCurator[name] || 0) + r.total;
+  });
+  const curatorList = Object.entries(byCurator).sort((a,b) => b[1]-a[1]);
+  const grandTotal  = curatorList.reduce((s,[,v]) => s+v, 0);
+
+  // KPIs
+  const topC = curatorList[0] || ['—', 0];
+  const avg  = curatorList.length > 0 ? Math.round(grandTotal / curatorList.length) : 0;
+  document.getElementById('res-kpis').innerHTML = `
+    <div class="res-metric"><div class="label">Total reportes</div><div class="value" style="color:#00b2a9">${grandTotal.toLocaleString('es-ES')}</div><div class="sub">${rangeLabel} ${year}</div></div>
+    <div class="res-metric"><div class="label">Curadores activos</div><div class="value" style="color:#2563eb">${curatorList.length}</div><div class="sub">en el periodo</div></div>
+    <div class="res-metric"><div class="label">Top curador</div><div class="value" style="font-size:15px;padding-top:4px;">${topC[0]}</div><div class="sub">${topC[1].toLocaleString('es-ES')} reportes</div></div>
+    <div class="res-metric"><div class="label">Media por curador</div><div class="value" style="font-size:20px;">${avg.toLocaleString('es-ES')}</div><div class="sub">en el periodo</div></div>
+  `;
+
+  // Tabla curadores
+  const rows = curatorList.map(([name, total], i) => `<tr>
+    <td style="font-size:11px;color:var(--muted);">${i+1}</td>
+    <td style="font-weight:500;">${name}</td>
+    <td style="font-weight:700;">${total.toLocaleString('es-ES')}</td>
+    <td style="color:var(--muted);">${grandTotal ? ((total/grandTotal)*100).toFixed(1)+'%' : '—'}</td>
+  </tr>`).join('');
+  document.getElementById('res-curator-panel').innerHTML = `
+    <div class="res-panel-title">Total por curador</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left;padding:5px 8px;font-size:11px;color:var(--muted);font-weight:600;">#</th>
+        <th style="text-align:left;padding:5px 8px;font-size:11px;color:var(--muted);font-weight:600;">Curador</th>
+        <th style="text-align:left;padding:5px 8px;font-size:11px;color:var(--muted);font-weight:600;">Total</th>
+        <th style="text-align:left;padding:5px 8px;font-size:11px;color:var(--muted);font-weight:600;">%</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" style="color:var(--muted);padding:20px;text-align:center;">Sin datos</td></tr>'}</tbody>
+      <tfoot><tr style="border-top:2px solid var(--border);">
+        <td></td><td style="font-weight:700;padding:6px 8px;">TOTAL</td>
+        <td style="font-weight:700;padding:6px 8px;">${grandTotal.toLocaleString('es-ES')}</td>
+        <td style="color:var(--muted);padding:6px 8px;">100%</td>
+      </tr></tfoot>
+    </table>`;
+
+  // Motivos
+  const byType = {};
+  records.forEach(r => { byType[r.type] = (byType[r.type] || 0) + r.total; });
+  const typeList = Object.entries(byType).sort((a,b) => b[1]-a[1]);
+  const typeTotal = typeList.reduce((s,[,v]) => s+v, 0);
+  const maxType = typeList.length ? typeList[0][1] : 1;
+  const motivoRows = typeList.map(([type, total]) => {
+    const color = MOTIVO_COLORS[type] || '#718096';
+    const w = Math.round((total/maxType)*100);
+    return `<div class="res-motivo-row">
+      <span class="res-motivo-dot" style="background:${color}"></span>
+      <span style="flex:1;font-size:12px;font-weight:500;">${capitalize(type)}</span>
+      <div style="width:90px;height:4px;background:var(--border);border-radius:2px;flex-shrink:0;">
+        <div style="width:${w}%;height:4px;border-radius:2px;background:${color};"></div>
+      </div>
+      <span style="font-size:11px;color:var(--muted);width:42px;text-align:right;">${typeTotal ? ((total/typeTotal)*100).toFixed(1)+'%' : '—'}</span>
+      <span style="font-size:11px;width:62px;text-align:right;font-weight:600;">${total.toLocaleString('es-ES')}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('res-motivos-panel').innerHTML = `
+    <div class="res-panel-title">Distribución por tipo</div>
+    ${motivoRows || '<div style="color:var(--muted);font-size:12px;padding:20px 0;text-align:center;">Sin datos</div>'}
+    ${typeList.length ? `<div style="display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);margin-top:4px;font-weight:700;font-size:12px;">TOTAL: ${typeTotal.toLocaleString('es-ES')}</div>` : ''}
+  `;
+}
+
+function downloadCSV() {
+  const year    = document.getElementById('res-year').value;
+  const from    = parseInt(document.getElementById('res-from').value);
+  const to      = parseInt(document.getElementById('res-to').value);
+  const curFilter = document.getElementById('res-curator').value;
+  const rangeLabel = from === to ? MONTHS_ES[from] : `${MONTHS_ES[from]}-${MONTHS_ES[to]}`;
+
+  const records = allRecords.filter(r => {
+    if (!r.fecha || !r.fecha.startsWith(year)) return false;
+    const month = parseInt(r.fecha.slice(5,7)) - 1;
+    if (month < from || month > to) return false;
+    if (curFilter !== 'all' && (CURATORS[r.curator_id] || 'ID ' + r.curator_id) !== curFilter) return false;
+    return true;
+  });
+  const byCurator = {};
+  records.forEach(r => {
+    const name = CURATORS[r.curator_id] || ('ID ' + r.curator_id);
+    byCurator[name] = (byCurator[name] || 0) + r.total;
+  });
+  const curatorList = Object.entries(byCurator).sort((a,b) => b[1]-a[1]);
+  const grandTotal  = curatorList.reduce((s,[,v]) => s+v, 0);
+
+  let csv = `Año,Periodo,Curador,Total,%\n`;
+  curatorList.forEach(([name, total]) => {
+    csv += `${year},"${rangeLabel}","${name}",${total},${grandTotal ? ((total/grandTotal)*100).toFixed(1)+'%' : '0%'}\n`;
+  });
+  csv += `${year},"${rangeLabel}",TOTAL,${grandTotal},100%\n`;
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `resumen_${year}_${rangeLabel}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
 
 loadData();
 </script>
